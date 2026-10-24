@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pet}
+      POSTGRES_DB: ${POSTGRES_DB:-pet_orders}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-pet}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-pet}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmqdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  api:
+    build: .
+    image: pet-orders:local
+    ports:
+      - "8000:8000"
+    environment: &app-env
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://pet:pet@postgres:5432/pet_orders}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://pet:pet@rabbitmq:5672/}
+    depends_on: &app-depends
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  worker:
+    build: .
+    image: pet-orders:local
+    command: ["python", "-m", "pet_orders.worker"]
+    environment: *app-env
+    depends_on: *app-depends
+
+volumes:
+  pgdata:
+  rabbitmqdata:
