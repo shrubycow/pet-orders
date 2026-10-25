@@ -18,8 +18,8 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from pet_orders.db.db import Base
-import pet_orders.db.models  # noqa: F401
+from pet_orders.core.db.db import Base
+import pet_orders.models  # noqa: F401
 
 target_metadata = Base.metadata
 

@@ -33,18 +33,38 @@ services:
       retries: 10
       start_period: 30s
 
+  redis:
+    image: redis:8
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-pet}"]
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-pet}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
   api:
     build: .
     image: pet-orders:local
+    pull_policy: build
     ports:
       - "8000:8000"
     environment: &app-env
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://pet:pet@postgres:5432/pet_orders}
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://pet:pet@rabbitmq:5672/}
+      REDIS_URL: ${REDIS_URL:-redis://:pet@redis:6379/0}
     depends_on: &app-depends
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test:
@@ -62,6 +82,7 @@ services:
   worker:
     build: .
     image: pet-orders:local
+    pull_policy: build
     command: ["python", "-m", "pet_orders.worker"]
     environment: *app-env
     depends_on: *app-depends
@@ -69,3 +90,4 @@ services:
 volumes:
   pgdata:
   rabbitmqdata:
+  redisdata:
