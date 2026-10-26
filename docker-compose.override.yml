@@ -6,10 +6,11 @@ services:
       - "8025:8025"
     healthcheck:
       test: ["CMD", "/mailpit", "readyz"]
-      interval: 5s
+      start_period: 30s
+      start_interval: 2s
+      interval: 1h
       timeout: 5s
-      retries: 10
-      start_period: 5s
+      retries: 3
 
   api:
     volumes:

@@ -3,7 +3,7 @@ from uuid import UUID
 from aio_pika.abc import AbstractChannel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pet_orders.core.auth import generate_auth_code, hash_password
+from pet_orders.core.auth.password import generate_auth_code, hash_password
 from pet_orders.core.email import send_email
 from pet_orders.core.redis.client import redis
 from pet_orders.users.models import User
