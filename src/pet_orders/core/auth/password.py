@@ -1,8 +1,8 @@
-import string
-from pwdlib import PasswordHash
-from fastapi.concurrency import run_in_threadpool
 import secrets
-from fastapi.security import OAuth2PasswordBearer
+import string
+
+from fastapi.concurrency import run_in_threadpool
+from pwdlib import PasswordHash
 
 SECRET_LENGTH = 6
 

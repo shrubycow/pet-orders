@@ -22,3 +22,6 @@ class UserResponse(BaseModel):
     id: UUID
     email: EmailStr
     status: UserStatus
+
+class UserLoginRequest(UserCreateRequest):
+    pass

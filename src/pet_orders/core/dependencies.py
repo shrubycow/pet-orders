@@ -1,4 +1,5 @@
 from typing import Annotated, Any
+
 from fastapi import Depends, HTTPException, Request, status
 
 from pet_orders.core.redis.client import redis

@@ -4,6 +4,10 @@ from pathlib import Path
 from pydantic import EmailStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
+ENV_FILE_PATH = Path(__file__).resolve().parents[2] / ".env"
+
+
 class Environment(str, Enum):
     local = "local"
     development = "development"
@@ -28,7 +32,7 @@ class Settings(BaseSettings):
     environment: str = "local"
 
     model_config = SettingsConfigDict(
-        env_file=Path(__file__).resolve().parents[2] / ".env",
+        env_file=ENV_FILE_PATH,
         extra="ignore",
     )
 
