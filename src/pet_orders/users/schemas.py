@@ -7,8 +7,8 @@ from pet_orders.users.models import UserStatus
 
 
 class UserCreateRequest(BaseModel):
-    email: Annotated[EmailStr, Field(description="User email", examples=["test@example.com"])]
-    password: Annotated[str, Field(description="User password", examples=["password"], max_length=255)]
+    email: Annotated[EmailStr, Field(description='User email', examples=['test@example.com'])]
+    password: Annotated[str, Field(description='User password', examples=['password'], max_length=255)]
 
 
 class UserCreatedEvent(BaseModel):

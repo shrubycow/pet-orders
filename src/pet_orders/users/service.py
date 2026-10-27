@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from aio_pika.abc import AbstractChannel
-from fastapi import HTTPException, status
+from fastapi import status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,12 +9,14 @@ from pet_orders.core.auth.auth import authorize_user
 from pet_orders.core.auth.password import generate_auth_code, hash_password
 from pet_orders.core.auth.schemas import TokenPair
 from pet_orders.core.email import send_email
+from pet_orders.core.errors import raise_api_error
 from pet_orders.core.redis.client import redis
 from pet_orders.users.models import User
 from pet_orders.users.producers import send_user_created_event
 from pet_orders.users.settings import users_settings
 
-_USERS_EMAIL_INDEX = "ix_users_email"
+_USERS_EMAIL_INDEX = 'ix_users_email'
+EMAIL_ALREADY_EXISTS = 'User with this email already exists'
 
 
 async def _commit_user(db_session: AsyncSession) -> None:
@@ -22,13 +24,10 @@ async def _commit_user(db_session: AsyncSession) -> None:
         await db_session.commit()
     except IntegrityError as exc:
         await db_session.rollback()
-        driver_error = getattr(exc.orig, "orig", None) or exc.orig
-        if getattr(driver_error, "constraint_name", None) != _USERS_EMAIL_INDEX:
+        driver_error = getattr(exc.orig, 'orig', None) or exc.orig
+        if getattr(driver_error, 'constraint_name', None) != _USERS_EMAIL_INDEX:
             raise
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="User with this email already exists",
-        ) from exc
+        raise_api_error(status.HTTP_409_CONFLICT, EMAIL_ALREADY_EXISTS, cause=exc)
 
 
 async def create_user(
@@ -55,5 +54,5 @@ async def register_user(
 
 async def send_user_created_email(user_id: UUID, email: str) -> None:
     code = generate_auth_code()
-    await redis.set(f"user_created:{user_id}", code, ex=users_settings.user_created_code_ttl)
-    await send_email(email, "Welcome to Pet Orders", f"Here is your code: {code}")
+    await redis.set(f'user_created:{user_id}', code, ex=users_settings.user_created_code_ttl)
+    await send_email(email, 'Welcome to Pet Orders', f'Here is your code: {code}')

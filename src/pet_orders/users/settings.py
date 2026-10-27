@@ -9,7 +9,7 @@ class UsersSettings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE_PATH,
-        extra="ignore",
+        extra='ignore',
     )
 
 

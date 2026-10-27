@@ -19,7 +19,7 @@ async def run() -> None:
         async with connect() as connection:
             channel = await connection.channel()
             await consume_user_created(channel)
-            print("worker started")
+            print('worker started')
             await stop.wait()
     finally:
         await redis.aclose()
@@ -29,5 +29,5 @@ def main() -> None:
     asyncio.run(run())
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

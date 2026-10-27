@@ -5,7 +5,7 @@ from aio_pika.abc import AbstractChannel
 from pet_orders.core.queue.queue import publish
 from pet_orders.users.schemas import UserCreatedEvent
 
-USER_CREATED_QUEUE = "user_created"
+USER_CREATED_QUEUE = 'user_created'
 
 
 async def send_user_created_event(channel: AbstractChannel, email: str, user_id: UUID) -> None:
