@@ -1,14 +1,13 @@
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from pydantic import EmailStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 ENV_FILE_PATH = Path(__file__).resolve().parents[2] / ".env"
 
 
-class Environment(str, Enum):
+class Environment(StrEnum):
     local = "local"
     development = "development"
     production = "production"
@@ -29,7 +28,7 @@ class Settings(BaseSettings):
     mail_use_credentials: bool = False
     mail_validate_certs: bool = False
 
-    environment: str = "local"
+    environment: Environment = Environment.local
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE_PATH,

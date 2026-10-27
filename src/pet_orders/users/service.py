@@ -1,6 +1,8 @@
 from uuid import UUID
 
 from aio_pika.abc import AbstractChannel
+from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pet_orders.core.auth.auth import authorize_user
@@ -12,6 +14,22 @@ from pet_orders.users.models import User
 from pet_orders.users.producers import send_user_created_event
 from pet_orders.users.settings import users_settings
 
+_USERS_EMAIL_INDEX = "ix_users_email"
+
+
+async def _commit_user(db_session: AsyncSession) -> None:
+    try:
+        await db_session.commit()
+    except IntegrityError as exc:
+        await db_session.rollback()
+        driver_error = getattr(exc.orig, "orig", None) or exc.orig
+        if getattr(driver_error, "constraint_name", None) != _USERS_EMAIL_INDEX:
+            raise
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User with this email already exists",
+        ) from exc
+
 
 async def create_user(
     db_session: AsyncSession,
@@ -21,7 +39,7 @@ async def create_user(
 ) -> User:
     user = User(email=email, password=await hash_password(password))
     db_session.add(user)
-    await db_session.commit()
+    await _commit_user(db_session)
     await send_user_created_event(channel, user.email, user.id)
     return user
 

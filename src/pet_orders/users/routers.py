@@ -13,7 +13,16 @@ router = APIRouter(
 )
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED, dependencies=[limit_by_ip(window_seconds=60)])
+@router.post(
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[limit_by_ip(window_seconds=60)],
+    responses={
+        status.HTTP_409_CONFLICT: {
+            "description": "User with this email already exists",
+        },
+    },
+)
 async def create_user(
     user: UserCreateRequest,
     db_session: SessionDep,
