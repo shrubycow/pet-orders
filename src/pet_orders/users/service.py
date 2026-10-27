@@ -15,7 +15,7 @@ from pet_orders.users.models import User
 from pet_orders.users.producers import send_user_created_event
 from pet_orders.users.settings import users_settings
 
-_USERS_EMAIL_INDEX = 'ix_users_email'
+_USERS_EMAIL_CONSTRAINT = 'uq_users_email'
 EMAIL_ALREADY_EXISTS = 'User with this email already exists'
 
 
@@ -25,7 +25,7 @@ async def _commit_user(db_session: AsyncSession) -> None:
     except IntegrityError as exc:
         await db_session.rollback()
         driver_error = getattr(exc.orig, 'orig', None) or exc.orig
-        if getattr(driver_error, 'constraint_name', None) != _USERS_EMAIL_INDEX:
+        if getattr(driver_error, 'constraint_name', None) != _USERS_EMAIL_CONSTRAINT:
             raise
         raise_api_error(status.HTTP_409_CONFLICT, EMAIL_ALREADY_EXISTS, cause=exc)
 
