@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import jwt
 from fastapi.security import OAuth2PasswordBearer
 
+from pet_orders.core.auth.consts import TokenType
 from pet_orders.core.auth.settings import auth_settings
 from pet_orders.core.redis.client import redis
 from pet_orders.core.utils import from_timestamp, now
@@ -28,8 +29,8 @@ def _create_token_pair(
     iat = now()
     if refresh_exat is None:
         refresh_exat = iat + REFRESH_TOKEN_EXPIRATION_DELTA
-    access_token = jwt.encode({'sub': str(user_id), 'typ': 'access', 'exp': iat + ACCESS_TOKEN_EXPIRATION_DELTA, 'iat': iat, 'jti': str(access_id)}, auth_settings.secret_key, algorithm=ALGORITHM)
-    refresh_token = jwt.encode({'sub': str(user_id), 'typ': 'refresh', 'exp': refresh_exat, 'iat': iat, 'jti': str(refresh_id), 'family': str(family_id)}, auth_settings.secret_key, algorithm=ALGORITHM)
+    access_token = jwt.encode({'sub': str(user_id), 'typ': TokenType.ACCESS, 'exp': iat + ACCESS_TOKEN_EXPIRATION_DELTA, 'iat': iat, 'jti': str(access_id)}, auth_settings.secret_key, algorithm=ALGORITHM)
+    refresh_token = jwt.encode({'sub': str(user_id), 'typ': TokenType.REFRESH, 'exp': refresh_exat, 'iat': iat, 'jti': str(refresh_id), 'family': str(family_id)}, auth_settings.secret_key, algorithm=ALGORITHM)
     return access_token, refresh_token, iat, refresh_exat
 
 async def authorize_user(

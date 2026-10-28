@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pet_orders.core.auth.auth import authorize_user
-from pet_orders.core.auth.password import generate_auth_code, hash_password
+from pet_orders.core.auth.password import generate_auth_code, hash_auth_code, hash_password
 from pet_orders.core.auth.schemas import TokenPair
 from pet_orders.core.email import send_email
 from pet_orders.core.errors import raise_api_error
@@ -18,6 +18,9 @@ from pet_orders.users.settings import users_settings
 _USERS_EMAIL_CONSTRAINT = 'uq_users_email'
 EMAIL_ALREADY_EXISTS = 'User with this email already exists'
 
+
+def get_user_created_key(user_id: UUID) -> str:
+    return f'user_created:{user_id}'
 
 async def _commit_user(db_session: AsyncSession) -> None:
     try:
@@ -54,5 +57,6 @@ async def register_user(
 
 async def send_user_created_email(user_id: UUID, email: str) -> None:
     code = generate_auth_code()
-    await redis.set(f'user_created:{user_id}', code, ex=users_settings.user_created_code_ttl)
+    hashed_code = hash_auth_code(code)
+    await redis.set(get_user_created_key(user_id), hashed_code, ex=users_settings.user_created_code_ttl)
     await send_email(email, 'Welcome to Pet Orders', f'Here is your code: {code}')

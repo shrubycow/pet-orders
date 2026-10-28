@@ -1,0 +1,10 @@
+---
+description: Do not run linters or formatters; the user runs them
+alwaysApply: true
+---
+
+# Linters
+
+Do not run linters or formatters. This includes `ruff check`, `ruff format`, and any other lint or format command.
+
+The user runs them when needed. Do not run them after edits, before finishing a task, or to verify a change.

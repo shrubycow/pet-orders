@@ -1,15 +1,13 @@
-from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr
 
+from pet_orders.core.auth.schemas import Credentials
 from pet_orders.users.models import UserStatus
 
 
-class UserCreateRequest(BaseModel):
-    email: Annotated[EmailStr, Field(description='User email', examples=['test@example.com'])]
-    password: Annotated[str, Field(description='User password', examples=['password'], max_length=255)]
-
+class UserCreateRequest(Credentials):
+    pass
 
 class UserCreatedEvent(BaseModel):
     email: EmailStr
@@ -22,6 +20,3 @@ class UserResponse(BaseModel):
     id: UUID
     email: EmailStr
     status: UserStatus
-
-class UserLoginRequest(UserCreateRequest):
-    pass
