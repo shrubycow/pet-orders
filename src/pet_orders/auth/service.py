@@ -1,7 +1,5 @@
-from uuid import UUID
-
 from fastapi import status
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from pet_orders.auth.schemas import LoginUserResponse
 from pet_orders.core.auth.auth import authorize_user, rotate_refresh_token
@@ -20,12 +18,12 @@ async def rotate_token_pair(refresh_token_data: RotateRefreshTokenData) -> Token
     access_token, refresh_token = await rotate_refresh_token(refresh_token_data.refresh_token.sub, refresh_token_data.refresh_token.family, refresh_token_data.session_data.family_exat)
     return TokenPair(access_token=access_token, refresh_token=refresh_token)
 
-async def verify_email(db_session: AsyncSession, user_id: UUID, code: str) -> None:
-    user_created_key = get_user_created_key(user_id)
+async def verify_email(db_session: AsyncSession, user: User, code: str) -> None:
+    user_created_key = get_user_created_key(user.id)
     hashed_code: str = (await redis.get(user_created_key)) or ''
     if not verify_auth_code(code, hashed_code):
         raise_api_error(status.HTTP_400_BAD_REQUEST, INVALID_CODE)
-    await db_session.execute(update(User).where(User.id == user_id).values(status=UserStatus.ACTIVE))
+    user.status = UserStatus.ACTIVE
     await db_session.commit()
     await redis.delete(user_created_key)
 

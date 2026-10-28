@@ -62,7 +62,7 @@ async def refresh_token(
     },
 )
 async def verify_email_code(db_session: SessionDep, user: InactiveUser, code: Annotated[str, Body(embed=True)]) -> None:
-    await verify_email(db_session, user.id, code)
+    await verify_email(db_session, user, code)
 
 @router.post(
     '/login',
