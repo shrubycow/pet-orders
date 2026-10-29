@@ -67,14 +67,21 @@ extend-immutable-calls = [
 
 [tool.ruff.lint.flake8-quotes]
 inline-quotes = "single"
-multiline-quotes = "single"
-docstring-quotes = "single"
+multiline-quotes = "double"
+docstring-quotes = "double"
 
 [tool.ruff.lint.isort]
-known-first-party = ["pet_orders"]
+known-first-party = ["pet_orders", "tests"]
 
 [tool.ruff.format]
 quote-style = "single"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+pythonpath = [".", "src"]
 
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14.0"]
@@ -82,5 +89,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1",
     "ruff>=0.17.3",
 ]

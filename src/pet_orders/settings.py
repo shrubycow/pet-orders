@@ -11,6 +11,8 @@ class Environment(StrEnum):
     local = 'local'
     development = 'development'
     production = 'production'
+    test = 'test'
+
 
 class Settings(BaseSettings):
     database_url: str

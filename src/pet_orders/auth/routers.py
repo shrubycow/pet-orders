@@ -1,5 +1,6 @@
 from typing import Annotated
-from fastapi import APIRouter, Body, Response, status
+
+from fastapi import APIRouter, Body, status
 
 from pet_orders.auth.dependencies import (
     ACCESS_TOKEN_EXPIRED,
@@ -20,7 +21,6 @@ from pet_orders.auth.service import (
     rotate_token_pair,
     verify_email,
 )
-from pet_orders.core.auth.auth import oauth2_scheme
 from pet_orders.core.auth.schemas import Credentials, TokenPair
 from pet_orders.core.db.dependencies import SessionDep
 from pet_orders.core.dependencies import rate_limit
@@ -30,6 +30,7 @@ router = APIRouter(
     prefix='/auth',
     tags=['auth'],
 )
+
 
 @router.post(
     '/refresh',
@@ -46,6 +47,7 @@ async def refresh_token(
 ) -> TokenPair:
     return await rotate_token_pair(refresh_token_data)
 
+
 @router.post(
     '/verify-email',
     status_code=status.HTTP_204_NO_CONTENT,
@@ -61,8 +63,11 @@ async def refresh_token(
         status.HTTP_429_TOO_MANY_REQUESTS: error_response('Too many requests'),
     },
 )
-async def verify_email_code(db_session: SessionDep, user: InactiveUser, code: Annotated[str, Body(embed=True)]) -> None:
+async def verify_email_code(
+    db_session: SessionDep, user: InactiveUser, code: Annotated[str, Body(embed=True)]
+) -> None:
     await verify_email(db_session, user, code)
+
 
 @router.post(
     '/login',
@@ -75,6 +80,7 @@ async def login(
     db_session: SessionDep,
 ) -> LoginUserResponse:
     return await login_user(db_session, login_data.email, login_data.password)
+
 
 @router.post(
     '/resend-auth-code',

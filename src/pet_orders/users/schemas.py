@@ -9,6 +9,7 @@ from pet_orders.users.models import UserStatus
 class UserCreateRequest(Credentials):
     pass
 
+
 class UserCreatedEvent(BaseModel):
     email: EmailStr
     user_id: UUID

@@ -11,4 +11,5 @@ class AuthSettings(BaseSettings):
         extra='ignore',
     )
 
+
 auth_settings = AuthSettings()

@@ -25,7 +25,9 @@ async def publish(
     durable: bool = True,
     persistent: bool = True,
 ) -> None:
-    delivery_mode = DeliveryMode.PERSISTENT if persistent else DeliveryMode.NOT_PERSISTENT
+    delivery_mode = (
+        DeliveryMode.PERSISTENT if persistent else DeliveryMode.NOT_PERSISTENT
+    )
     queue = await channel.declare_queue(queue_name, durable=durable)
     await channel.default_exchange.publish(
         Message(body, delivery_mode=delivery_mode),
