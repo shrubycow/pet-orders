@@ -16,3 +16,7 @@ wheels/
 
 # Agent skills installed from packages
 .agents
+
+# IDE
+.idea/
+.vscode/

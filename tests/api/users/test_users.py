@@ -46,6 +46,7 @@ async def test_register_user(
     assert event.email == email
     assert event.user_id == user.id
 
+
 async def test_register_user_invalid_email(
     client: AsyncClient,
 ):
