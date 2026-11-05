@@ -3,12 +3,13 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pet_orders.auth.dependencies import USER_IS_INACTIVE
 from pet_orders.core.errors import raise_api_error
 from pet_orders.organizations.consts import OrganizationRole
 from pet_orders.organizations.models import Organization
-from pet_orders.users.models import User
+from pet_orders.users.models import User, UserStatus
 
-_ORGANIZATIONS_NAME_CONSTRAINT = 'uq_organizations_name'
+_ORGANIZATIONS_NAME_INDEX = 'ix_organizations_name'
 ORGANIZATION_NAME_TAKEN = 'Organization with this name already exists'
 USER_ALREADY_IN_ORGANIZATION = 'User already belongs to an organization'
 
@@ -19,10 +20,7 @@ async def _commit_organization(db_session: AsyncSession) -> None:
     except IntegrityError as exc:
         await db_session.rollback()
         driver_error = getattr(exc.orig, 'orig', None) or exc.orig
-        if (
-            getattr(driver_error, 'constraint_name', None)
-            != _ORGANIZATIONS_NAME_CONSTRAINT
-        ):
+        if getattr(driver_error, 'constraint_name', None) != _ORGANIZATIONS_NAME_INDEX:
             raise
         raise_api_error(status.HTTP_409_CONFLICT, ORGANIZATION_NAME_TAKEN, cause=exc)
 
@@ -37,10 +35,12 @@ async def create_organization(
         .execution_options(populate_existing=True)
     )
     locked_user = result.scalar_one()
+    if locked_user.status is not UserStatus.ACTIVE:
+        raise_api_error(status.HTTP_403_FORBIDDEN, USER_IS_INACTIVE)
     if locked_user.organization_id is not None:
         raise_api_error(status.HTTP_409_CONFLICT, USER_ALREADY_IN_ORGANIZATION)
 
-    organization = Organization(name=name)
+    organization = Organization(name=name.strip())
     locked_user.organization = organization
     locked_user.role = OrganizationRole.OWNER
     db_session.add(organization)

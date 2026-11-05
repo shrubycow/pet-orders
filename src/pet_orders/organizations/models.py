@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import Enum, String, Uuid
+from sqlalchemy import Enum, Index, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from pet_orders.core.db.db import Base
@@ -17,7 +17,7 @@ class Organization(DatetimeMixin, Base):
     __tablename__ = 'organizations'
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
-    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[OrganizationStatus] = mapped_column(
         Enum(
             OrganizationStatus,
@@ -30,11 +30,17 @@ class Organization(DatetimeMixin, Base):
     )
     users: Mapped[list['User']] = relationship(
         back_populates='organization',
-        passive_deletes='all',
         lazy='raise',
     )
     products: Mapped[list['Product']] = relationship(
         back_populates='organization',
-        passive_deletes='all',
         lazy='raise',
+    )
+
+    __table_args__ = (
+        Index(
+            'ix_organizations_name',
+            func.lower(func.btrim(name)),
+            unique=True,
+        ),
     )

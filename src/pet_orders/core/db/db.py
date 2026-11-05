@@ -1,6 +1,6 @@
-from sqlalchemy import MetaData
+from sqlalchemy import MetaData, event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, ORMExecuteState, Session
 
 from pet_orders.settings import settings
 
@@ -18,5 +18,23 @@ convention = {
 }
 
 
+class DeletionForbidden(Exception):
+    pass
+
+
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=convention)
+
+
+@event.listens_for(Base, 'before_delete', propagate=True)
+def _forbid_delete(mapper, connection, target) -> None:
+    raise DeletionForbidden(f'{type(target).__name__} cannot be deleted')
+
+
+@event.listens_for(Session, 'do_orm_execute')
+def _forbid_bulk_delete(state: ORMExecuteState) -> None:
+    if not state.is_delete:
+        return
+    mappers = state.all_mappers
+    if any(issubclass(mapper.class_, Base) for mapper in mappers):
+        raise DeletionForbidden(f'{mappers[0].class_.__name__} cannot be deleted')
