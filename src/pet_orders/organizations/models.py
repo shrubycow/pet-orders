@@ -29,8 +29,12 @@ class Organization(DatetimeMixin, Base):
         default=OrganizationStatus.ACTIVE,
     )
     users: Mapped[list['User']] = relationship(
-        back_populates='organization', passive_deletes='all', lazy='raise',
+        back_populates='organization',
+        passive_deletes='all',
+        lazy='raise',
     )
     products: Mapped[list['Product']] = relationship(
-        back_populates='organization', passive_deletes='all', lazy='raise',
+        back_populates='organization',
+        passive_deletes='all',
+        lazy='raise',
     )

@@ -78,9 +78,7 @@ async def test_delete_with_users_is_restricted(
     organization = await _with_children(db_session, organization, 'users', reload)
     await db_session.delete(organization)
 
-    await assert_flush_violates(
-        db_session, 'fk_users_organization_id_organizations'
-    )
+    await assert_flush_violates(db_session, 'fk_users_organization_id_organizations')
 
 
 @restricted_delete
@@ -93,6 +91,4 @@ async def test_delete_with_products_is_restricted(
     organization = await _with_children(db_session, organization, 'products', reload)
     await db_session.delete(organization)
 
-    await assert_flush_violates(
-        db_session, 'fk_products_organization_id_organizations'
-    )
+    await assert_flush_violates(db_session, 'fk_products_organization_id_organizations')

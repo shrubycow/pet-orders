@@ -60,9 +60,7 @@ async def test_role_without_organization(db_session: AsyncSession):
 async def test_single_owner_per_organization(
     db_session: AsyncSession, organization: Organization
 ):
-    db_session.add(
-        make_user('owner@example.com', organization, OrganizationRole.OWNER)
-    )
+    db_session.add(make_user('owner@example.com', organization, OrganizationRole.OWNER))
     await db_session.flush()
     db_session.add(
         make_user('second@example.com', organization, OrganizationRole.OWNER)

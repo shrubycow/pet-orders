@@ -59,5 +59,6 @@ class User(DatetimeMixin, Base):
         nullable=True,
     )
     organization: Mapped['Organization | None'] = relationship(
-        back_populates='users', lazy='raise',
+        back_populates='users',
+        lazy='raise',
     )

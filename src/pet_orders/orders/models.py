@@ -2,7 +2,16 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, Enum, ForeignKey, Numeric, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import (
+    CheckConstraint,
+    Enum,
+    ForeignKey,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from pet_orders.core.db.db import Base
@@ -41,5 +50,6 @@ class Product(DatetimeMixin, Base):
     stock: Mapped[int] = mapped_column(nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
     organization: Mapped['Organization'] = relationship(
-        back_populates='products', lazy='raise',
+        back_populates='products',
+        lazy='raise',
     )
