@@ -9,6 +9,7 @@ from pet_orders.main import app
 from pet_orders.users.models import User, UserStatus
 from pet_orders.users.producers import USER_CREATED_QUEUE
 from pet_orders.users.schemas import UserCreatedEvent, UserCreateRequest
+from pet_orders.users.service import EMAIL_ALREADY_EXISTS
 from tests.fakes import FakeChannel
 
 
@@ -45,6 +46,33 @@ async def test_register_user(
     assert queue == USER_CREATED_QUEUE
     assert event.email == email
     assert event.user_id == user.id
+
+
+async def test_register_user_duplicate_email(
+    client: AsyncClient, inactive_user: User, broker: FakeChannel
+):
+    response = await client.post(
+        app.url_path_for('create_user'),
+        json={'email': inactive_user.email, 'password': 'password'},
+    )
+
+    assert response.status_code == 409
+    assert response.json()['detail'] == EMAIL_ALREADY_EXISTS
+    assert broker.published == []
+
+
+async def test_register_user_rate_limit(client: AsyncClient):
+    first = await client.post(
+        app.url_path_for('create_user'),
+        json={'email': 'first@example.com', 'password': 'password'},
+    )
+    second = await client.post(
+        app.url_path_for('create_user'),
+        json={'email': 'second@example.com', 'password': 'password'},
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 429
 
 
 async def test_register_user_invalid_email(

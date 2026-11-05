@@ -19,7 +19,7 @@ async def hash_password(password: str) -> str:
 
 
 async def verify_password(password: str, hashed_password: str) -> bool:
-    return await run_in_threadpool(hasher.verify, hashed_password, password)
+    return await run_in_threadpool(hasher.verify, password, hashed_password)
 
 
 def generate_auth_code() -> str:

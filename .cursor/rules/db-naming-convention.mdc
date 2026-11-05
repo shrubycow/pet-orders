@@ -1,0 +1,39 @@
+---
+description: Naming of constraints and indexes under the MetaData naming_convention in core/db/db.py
+globs: src/pet_orders/**/models.py,src/pet_orders/migrations/**/*.py
+alwaysApply: false
+---
+
+# Constraint and index naming
+
+`Base.metadata` uses this `naming_convention` (`src/pet_orders/core/db/db.py`):
+
+| key | template |
+|-----|----------|
+| `pk` | `pk_%(table_name)s` |
+| `fk` | `fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s` |
+| `uq` | `uq_%(table_name)s_%(column_0_N_name)s` |
+| `ix` | `ix_%(column_0_N_label)s` |
+| `ck` | `ck_%(table_name)s_%(constraint_name)s` |
+
+## Rules
+
+- PK, FK, `unique=True`, `UniqueConstraint`, `index=True`, multi-column `Index(None, ...)`: do not pass a name; the convention generates it. `uq` and `ix` join all columns: `UniqueConstraint('organization_id', 'sku')` on `products` becomes `uq_products_organization_id_sku`.
+- `CheckConstraint`: pass only the suffix. The convention adds `ck_<table>_` itself.
+- Partial or functional `Index(...)`, or one on the same columns as another index: give an explicit name; the `ix` template has no `%(constraint_name)s`, so it is kept as is. Write the full name with the `ix_<table>_` prefix, including unique indexes. A generated name would collide with the other index on those columns.
+- Names over 63 characters are truncated by PostgreSQL; SQLAlchemy shortens convention names with a hash suffix. Pass an explicit short name for such constraints.
+- Migrations: keep the names autogenerate produces. Do not rename them by hand.
+
+```python
+# ❌ BAD: becomes ck_users_ck_users_organization_role
+CheckConstraint('(organization_id IS NULL) = (role IS NULL)', name='ck_users_organization_role')
+
+# ✅ GOOD: becomes ck_users_organization_role
+CheckConstraint('(organization_id IS NULL) = (role IS NULL)', name='organization_role')
+
+# ❌ BAD: prefix does not match the ix convention
+Index('uq_users_organization_owner', 'organization_id', unique=True, postgresql_where=text("role = 'owner'"))
+
+# ✅ GOOD
+Index('ix_users_organization_owner', 'organization_id', unique=True, postgresql_where=text("role = 'owner'"))
+```

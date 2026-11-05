@@ -1,68 +1,22 @@
-import os
-from pathlib import Path
-
 import pytest
-from alembic.config import Config
-from alembic.runtime.environment import EnvironmentContext
-from alembic.script import ScriptDirectory
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
-from sqlalchemy.engine.url import make_url
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from pet_orders.core.db.db import Base, engine
+from pet_orders.core.auth.auth import authorize_user
+from pet_orders.core.auth.password import hash_password
+from pet_orders.core.db.db import engine
 from pet_orders.core.db.dependencies import get_db_session
 from pet_orders.core.redis.client import redis
 from pet_orders.main import app
+from pet_orders.users.models import User, UserStatus
+from tests.db import migrate_database
+from tests.factories import USER_EMAIL, USER_PASSWORD
 from tests.fakes import FakeChannel
-
-ROOT = Path(__file__).resolve().parents[2]
-
-
-def _upgrade(connection) -> None:
-    config = Config(str(ROOT / 'alembic.ini'))
-    script = ScriptDirectory.from_config(config)
-
-    def upgrade(revision, context):
-        return script._upgrade_revs('head', revision)
-
-    env_context = EnvironmentContext(
-        config,
-        script,
-        fn=upgrade,
-        destination_rev='head',
-    )
-    with env_context:
-        env_context.configure(connection=connection, target_metadata=Base.metadata)
-        with env_context.begin_transaction():
-            env_context.run_migrations()
 
 
 @pytest.fixture(scope='session')
 async def migrated_database() -> None:
-    await _create_database()
-    async with engine.connect() as connection:
-        await connection.run_sync(_upgrade)
-
-
-async def _create_database() -> None:
-    database = make_url(os.environ['DATABASE_URL']).database
-    if not database:
-        raise RuntimeError('DATABASE_URL has no database name')
-    admin_engine = create_async_engine(
-        os.environ['ADMIN_DATABASE_URL'],
-        isolation_level='AUTOCOMMIT',
-        poolclass=NullPool,
-    )
-    async with admin_engine.connect() as connection:
-        exists = await connection.execute(
-            text('SELECT 1 FROM pg_database WHERE datname = :name'),
-            {'name': database},
-        )
-        if exists.scalar() is None:
-            await connection.execute(text(f'CREATE DATABASE "{database}"'))
-    await admin_engine.dispose()
+    await migrate_database()
 
 
 @pytest.fixture(scope='session')
@@ -118,3 +72,40 @@ async def clean_state(db_sessions: async_sessionmaker[AsyncSession]) -> None:
 async def db_session(db_sessions: async_sessionmaker[AsyncSession]):
     async with db_sessions() as session:
         yield session
+
+
+async def _create_user(db_session: AsyncSession, status: UserStatus) -> User:
+    user = User(
+        email=USER_EMAIL,
+        password=await hash_password(USER_PASSWORD),
+        status=status,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    return user
+
+
+@pytest.fixture
+async def inactive_user(db_session: AsyncSession) -> User:
+    return await _create_user(db_session, UserStatus.INACTIVE)
+
+
+@pytest.fixture
+async def active_user(db_session: AsyncSession) -> User:
+    return await _create_user(db_session, UserStatus.ACTIVE)
+
+
+def _bearer(access_token: str) -> dict[str, str]:
+    return {'Authorization': f'Bearer {access_token}'}
+
+
+@pytest.fixture
+async def inactive_user_headers(inactive_user: User) -> dict[str, str]:
+    access_token, _ = await authorize_user(inactive_user.id)
+    return _bearer(access_token)
+
+
+@pytest.fixture
+async def active_user_headers(active_user: User) -> dict[str, str]:
+    access_token, _ = await authorize_user(active_user.id)
+    return _bearer(access_token)

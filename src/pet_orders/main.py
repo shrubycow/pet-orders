@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+import pet_orders.models  # noqa: F401
 from pet_orders.auth.routers import router as auth_router
 from pet_orders.core.queue.queue import connect
 from pet_orders.core.redis.client import redis
