@@ -1,9 +1,9 @@
-from typing import NoReturn
+from typing import Any, NoReturn
 
 from fastapi import HTTPException
 
 
-def error_response(description: str, *details: str) -> dict:
+def error_response(description: str, *details: str) -> dict[str, Any]:
     if not details:
         return {'description': description}
     return {

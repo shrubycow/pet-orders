@@ -1,6 +1,8 @@
+from typing import Any
 from sqlalchemy import MetaData, event
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase, ORMExecuteState, Session
+from sqlalchemy.orm import DeclarativeBase, Mapper, ORMExecuteState, Session
 
 from pet_orders.settings import settings
 
@@ -27,7 +29,7 @@ class Base(DeclarativeBase):
 
 
 @event.listens_for(Base, 'before_delete', propagate=True)
-def _forbid_delete(mapper, connection, target) -> None:
+def _forbid_delete(mapper: Mapper[Any], connection: Connection, target: object) -> None:
     raise DeletionForbidden(f'{type(target).__name__} cannot be deleted')
 
 

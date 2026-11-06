@@ -1,4 +1,6 @@
-from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
+from typing import cast
+from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType, NameEmail
+from pydantic import SecretStr
 
 from pet_orders.settings import settings
 
@@ -6,14 +8,14 @@ from pet_orders.settings import settings
 async def send_email(email: str, subject: str, body: str) -> None:
     message = MessageSchema(
         subject=subject,
-        recipients=[email],
+        recipients=[cast(NameEmail, email)],
         body=body,
         subtype=MessageType.plain,
     )
     fm = FastMail(
         ConnectionConfig(
             MAIL_USERNAME=settings.mail_username,
-            MAIL_PASSWORD=settings.mail_password,
+            MAIL_PASSWORD=SecretStr(settings.mail_password),
             MAIL_FROM=settings.mail_from,
             MAIL_FROM_NAME=settings.mail_from_name,
             MAIL_PORT=settings.mail_port,

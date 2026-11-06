@@ -36,14 +36,14 @@ async def check_refresh_token(
         refresh_token_payload = RefreshToken.model_validate(payload)
     except jwt.ExpiredSignatureError as exc:
         raise_api_error(status.HTTP_401_UNAUTHORIZED, REFRESH_TOKEN_EXPIRED, cause=exc)
-    except (jwt.InvalidTokenError, ValidationError) as exc:  # type: ignore
+    except (jwt.InvalidTokenError, ValidationError) as exc:
         raise_api_error(status.HTTP_401_UNAUTHORIZED, INVALID_REFRESH_TOKEN, cause=exc)
 
     session_key = get_session_key(refresh_token_payload.family)
-    session_data = await redis.hgetall(session_key)
+    raw_session_data = await redis.hgetall(session_key)
 
     try:
-        session_data = RedisFamilySession.model_validate(session_data)
+        session_data = RedisFamilySession.model_validate(raw_session_data)
     except ValidationError as exc:
         raise_api_error(status.HTTP_401_UNAUTHORIZED, INVALID_REFRESH_TOKEN, cause=exc)
 
@@ -67,7 +67,7 @@ async def get_access_token(
         access_token_payload = AccessToken.model_validate(payload)
     except jwt.ExpiredSignatureError as exc:
         raise_api_error(status.HTTP_401_UNAUTHORIZED, ACCESS_TOKEN_EXPIRED, cause=exc)
-    except (jwt.InvalidTokenError, ValidationError) as exc:  # type: ignore
+    except (jwt.InvalidTokenError, ValidationError) as exc:
         raise_api_error(status.HTTP_401_UNAUTHORIZED, INVALID_ACCESS_TOKEN, cause=exc)
 
     return access_token_payload

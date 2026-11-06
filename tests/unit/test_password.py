@@ -8,7 +8,7 @@ from pet_orders.core.auth.password import (
 )
 
 
-async def test_verify_password():
+async def test_verify_password() -> None:
     hashed = await hash_password('password')
 
     assert hashed != 'password'
@@ -16,14 +16,14 @@ async def test_verify_password():
     assert await verify_password('wrong-password', hashed) is False
 
 
-def test_generate_auth_code():
+def test_generate_auth_code() -> None:
     code = generate_auth_code()
 
     assert len(code) == SECRET_LENGTH
     assert code.isdigit()
 
 
-def test_verify_auth_code():
+def test_verify_auth_code() -> None:
     hashed = hash_auth_code('123456')
 
     assert verify_auth_code('123456', hashed) is True

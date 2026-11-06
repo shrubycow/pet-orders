@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,14 +10,14 @@ from tests.factories import make_organization
 
 
 @pytest.fixture(scope='session')
-async def migrated_database():
+async def migrated_database() -> AsyncIterator[None]:
     await migrate_database()
     yield
     await engine.dispose()
 
 
 @pytest.fixture
-async def db_session(migrated_database: None):
+async def db_session(migrated_database: None) -> AsyncIterator[AsyncSession]:
     async with engine.connect() as connection:
         transaction = await connection.begin()
         session = AsyncSession(

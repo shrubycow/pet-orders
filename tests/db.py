@@ -4,8 +4,10 @@ from pathlib import Path
 import pytest
 from alembic.config import Config
 from alembic.runtime.environment import EnvironmentContext
+from alembic.runtime.migration import MigrationContext, RevisionStep
 from alembic.script import ScriptDirectory
 from sqlalchemy import text
+from sqlalchemy.engine import Connection
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -16,11 +18,11 @@ from pet_orders.core.db.db import Base, engine
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _upgrade(connection) -> None:
+def _upgrade(connection: Connection) -> None:
     config = Config(str(ROOT / 'alembic.ini'))
     script = ScriptDirectory.from_config(config)
 
-    def upgrade(revision, context):
+    def upgrade(revision: str, context: MigrationContext) -> list[RevisionStep]:
         return script._upgrade_revs('head', revision)
 
     env_context = EnvironmentContext(

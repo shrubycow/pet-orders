@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi import HTTPException
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -59,7 +59,7 @@ async def _create_product(
     client: AsyncClient,
     headers: dict[str, str],
     **overrides: object,
-):
+) -> Response:
     return await client.post(
         app.url_path_for('create_product_endpoint'),
         json=_product_payload(**overrides),
@@ -79,7 +79,7 @@ async def test_create_product(
     db_session: AsyncSession,
     member_organization: Organization,
     active_user_headers: dict[str, str],
-):
+) -> None:
     response = await _create_product(
         client,
         active_user_headers,
@@ -111,7 +111,7 @@ async def test_create_product_defaults(
     client: AsyncClient,
     member_organization: Organization,
     active_user_headers: dict[str, str],
-):
+) -> None:
     response = await _create_product(client, active_user_headers)
 
     assert response.status_code == 201
@@ -126,7 +126,7 @@ async def test_create_product_strips_text(
     db_session: AsyncSession,
     member_organization: Organization,
     active_user_headers: dict[str, str],
-):
+) -> None:
     response = await _create_product(
         client,
         active_user_headers,
@@ -153,7 +153,7 @@ async def test_create_product_duplicate_sku(
     db_session: AsyncSession,
     member_organization: Organization,
     active_user_headers: dict[str, str],
-):
+) -> None:
     created = await _create_product(client, active_user_headers)
     assert created.status_code == 201
 
@@ -170,7 +170,7 @@ async def test_create_product_same_sku_in_another_organization(
     db_session: AsyncSession,
     active_user: User,
     active_user_headers: dict[str, str],
-):
+) -> None:
     add_user_to_organization(active_user, make_organization(name='Acme'))
     other = User(
         email='other@example.com',
@@ -193,7 +193,7 @@ async def test_create_product_same_sku_in_another_organization(
 
 async def test_create_product_without_organization(
     client: AsyncClient, active_user_headers: dict[str, str]
-):
+) -> None:
     response = await _create_product(client, active_user_headers)
 
     assert response.status_code == 403
@@ -210,7 +210,7 @@ async def test_create_product_when_organization_is_not_active(
     active_user: User,
     active_user_headers: dict[str, str],
     organization_status: OrganizationStatus,
-):
+) -> None:
     organization = make_organization()
     organization.status = organization_status
     add_user_to_organization(active_user, organization)
@@ -225,14 +225,14 @@ async def test_create_product_when_organization_is_not_active(
 
 async def test_create_product_inactive_user(
     client: AsyncClient, inactive_user_headers: dict[str, str]
-):
+) -> None:
     response = await _create_product(client, inactive_user_headers)
 
     assert response.status_code == 403
     assert response.json()['detail'] == USER_IS_INACTIVE
 
 
-async def test_create_product_without_token(client: AsyncClient):
+async def test_create_product_without_token(client: AsyncClient) -> None:
     response = await _create_product(client, {})
 
     assert response.status_code == 401
@@ -247,14 +247,14 @@ async def test_create_product_without_token(client: AsyncClient):
 )
 async def test_create_product_bad_access_token(
     client: AsyncClient, token: str, detail: str
-):
+) -> None:
     response = await _create_product(client, bearer(token))
 
     assert response.status_code == 401
     assert response.json()['detail'] == detail
 
 
-async def test_create_product_unknown_user(client: AsyncClient):
+async def test_create_product_unknown_user(client: AsyncClient) -> None:
     access_token, _ = await authorize_user(uuid4())
 
     response = await _create_product(client, bearer(access_token))
@@ -286,7 +286,7 @@ async def test_create_product_invalid_field(
     active_user_headers: dict[str, str],
     field: str,
     value: object,
-):
+) -> None:
     response = await _create_product(client, active_user_headers, **{field: value})
 
     assert response.status_code == 422
@@ -297,7 +297,7 @@ async def test_create_product_invalid_field(
 async def test_create_product_without_sku(
     client: AsyncClient,
     active_user_headers: dict[str, str],
-):
+) -> None:
     payload = _product_payload()
     payload.pop('sku')
 
@@ -315,7 +315,7 @@ async def test_create_product_sees_inactive_organization_after_load(
     db_session: AsyncSession,
     active_user: User,
     member_organization: Organization,
-):
+) -> None:
     await db_session.execute(
         text('UPDATE organizations SET status = :status WHERE id = :organization_id'),
         {
@@ -323,40 +323,44 @@ async def test_create_product_sees_inactive_organization_after_load(
             'organization_id': member_organization.id,
         },
     )
-    assert member_organization.status is OrganizationStatus.ACTIVE
+    status_before = member_organization.status
+    assert status_before is OrganizationStatus.ACTIVE
 
     with pytest.raises(HTTPException) as exc_info:
         await create_product(db_session, active_user, _product_request())
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == ORGANIZATION_IS_NOT_ACTIVE
-    assert member_organization.status is OrganizationStatus.SUSPENDED
+    status_after = member_organization.status
+    assert status_after is OrganizationStatus.SUSPENDED
 
 
 @pytest.mark.usefixtures('member_organization')
 async def test_create_product_sees_deactivation_after_load(
     db_session: AsyncSession,
     active_user: User,
-):
+) -> None:
     await db_session.execute(
         text('UPDATE users SET status = :status WHERE id = :user_id'),
         {'status': UserStatus.INACTIVE, 'user_id': active_user.id},
     )
-    assert active_user.status is UserStatus.ACTIVE
+    status_before = active_user.status
+    assert status_before is UserStatus.ACTIVE
 
     with pytest.raises(HTTPException) as exc_info:
         await create_product(db_session, active_user, _product_request())
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == USER_IS_INACTIVE
-    assert active_user.status is UserStatus.INACTIVE
+    status_after = active_user.status
+    assert status_after is UserStatus.INACTIVE
 
 
 async def test_create_product_sees_removed_membership_after_load(
     db_session: AsyncSession,
     active_user: User,
     member_organization: Organization,
-):
+) -> None:
     await db_session.execute(
         text(
             'UPDATE users SET organization_id = NULL, role = NULL WHERE id = :user_id'

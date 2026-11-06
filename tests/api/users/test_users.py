@@ -15,7 +15,7 @@ from tests.fakes import FakeChannel
 
 async def test_register_user(
     client: AsyncClient, db_session: AsyncSession, broker: FakeChannel
-):
+) -> None:
     email = 'test@example.com'
     response = await client.post(
         app.url_path_for('create_user'),
@@ -50,7 +50,7 @@ async def test_register_user(
 
 async def test_register_user_duplicate_email(
     client: AsyncClient, inactive_user: User, broker: FakeChannel
-):
+) -> None:
     response = await client.post(
         app.url_path_for('create_user'),
         json={'email': inactive_user.email, 'password': 'password'},
@@ -61,7 +61,7 @@ async def test_register_user_duplicate_email(
     assert broker.published == []
 
 
-async def test_register_user_rate_limit(client: AsyncClient):
+async def test_register_user_rate_limit(client: AsyncClient) -> None:
     first = await client.post(
         app.url_path_for('create_user'),
         json={'email': 'first@example.com', 'password': 'password'},
@@ -77,7 +77,7 @@ async def test_register_user_rate_limit(client: AsyncClient):
 
 async def test_register_user_invalid_email(
     client: AsyncClient,
-):
+) -> None:
     email = 'test'
     response = await client.post(
         app.url_path_for('create_user'),

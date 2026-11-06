@@ -2,7 +2,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi import HTTPException
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,7 +28,7 @@ from tests.factories import make_organization
 
 async def _create_organization(
     client: AsyncClient, headers: dict[str, str], name: str = 'Acme'
-):
+) -> Response:
     return await client.post(
         app.url_path_for('create_organization_endpoint'),
         json={'name': name},
@@ -41,7 +41,7 @@ async def test_create_organization(
     db_session: AsyncSession,
     active_user: User,
     active_user_headers: dict[str, str],
-):
+) -> None:
     response = await _create_organization(client, active_user_headers, 'Acme')
 
     assert response.status_code == 201
@@ -62,7 +62,7 @@ async def test_create_organization_duplicate_name(
     client: AsyncClient,
     db_session: AsyncSession,
     active_user_headers: dict[str, str],
-):
+) -> None:
     created = await _create_organization(client, active_user_headers, 'Acme')
     assert created.status_code == 201
 
@@ -93,7 +93,7 @@ async def test_create_organization_when_user_already_belongs(
     db_session: AsyncSession,
     active_user: User,
     active_user_headers: dict[str, str],
-):
+) -> None:
     active_user.organization = make_organization(name='Existing')
     active_user.role = OrganizationRole.MEMBER
     await db_session.commit()
@@ -112,14 +112,14 @@ async def test_create_organization_when_user_already_belongs(
 
 async def test_create_organization_inactive_user(
     client: AsyncClient, inactive_user_headers: dict[str, str]
-):
+) -> None:
     response = await _create_organization(client, inactive_user_headers)
 
     assert response.status_code == 403
     assert response.json()['detail'] == USER_IS_INACTIVE
 
 
-async def test_create_organization_without_token(client: AsyncClient):
+async def test_create_organization_without_token(client: AsyncClient) -> None:
     response = await _create_organization(client, {})
 
     assert response.status_code == 401
@@ -134,14 +134,14 @@ async def test_create_organization_without_token(client: AsyncClient):
 )
 async def test_create_organization_bad_access_token(
     client: AsyncClient, token: str, detail: str
-):
+) -> None:
     response = await _create_organization(client, bearer(token))
 
     assert response.status_code == 401
     assert response.json()['detail'] == detail
 
 
-async def test_create_organization_unknown_user(client: AsyncClient):
+async def test_create_organization_unknown_user(client: AsyncClient) -> None:
     access_token, _ = await authorize_user(uuid4())
 
     response = await _create_organization(client, bearer(access_token))
@@ -154,7 +154,7 @@ async def test_create_organization_strips_name(
     client: AsyncClient,
     db_session: AsyncSession,
     active_user_headers: dict[str, str],
-):
+) -> None:
     response = await _create_organization(client, active_user_headers, '  Acme  ')
 
     assert response.status_code == 201
@@ -166,7 +166,7 @@ async def test_create_organization_strips_name(
 
 async def test_create_organization_strips_before_length_check(
     client: AsyncClient, active_user_headers: dict[str, str]
-):
+) -> None:
     response = await _create_organization(
         client, active_user_headers, f'  {"a" * 255}  '
     )
@@ -179,7 +179,7 @@ async def test_create_organization_duplicate_name_ignores_case_and_spaces(
     client: AsyncClient,
     db_session: AsyncSession,
     active_user_headers: dict[str, str],
-):
+) -> None:
     created = await _create_organization(client, active_user_headers, 'Acme')
     assert created.status_code == 201
 
@@ -200,7 +200,7 @@ async def test_create_organization_duplicate_name_ignores_case_and_spaces(
 
 async def test_create_organization_sees_membership_written_after_load(
     db_session: AsyncSession, active_user: User
-):
+) -> None:
     organization = make_organization(name='Existing')
     db_session.add(organization)
     await db_session.flush()
@@ -227,25 +227,27 @@ async def test_create_organization_sees_membership_written_after_load(
 
 async def test_create_organization_sees_deactivation_after_load(
     db_session: AsyncSession, active_user: User
-):
+) -> None:
     await db_session.execute(
         text('UPDATE users SET status = :status WHERE id = :user_id'),
         {'status': UserStatus.INACTIVE, 'user_id': active_user.id},
     )
-    assert active_user.status is UserStatus.ACTIVE
+    status_before = active_user.status
+    assert status_before is UserStatus.ACTIVE
 
     with pytest.raises(HTTPException) as exc_info:
         await create_organization(db_session, active_user, 'Acme')
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == USER_IS_INACTIVE
-    assert active_user.status is UserStatus.INACTIVE
+    status_after = active_user.status
+    assert status_after is UserStatus.INACTIVE
 
 
 @pytest.mark.parametrize('name', ['', '   ', 'a' * 256])
 async def test_create_organization_invalid_name(
     client: AsyncClient, active_user_headers: dict[str, str], name: str
-):
+) -> None:
     response = await _create_organization(client, active_user_headers, name)
 
     assert response.status_code == 422
@@ -254,7 +256,7 @@ async def test_create_organization_invalid_name(
 
 async def test_create_organization_without_name(
     client: AsyncClient, active_user_headers: dict[str, str]
-):
+) -> None:
     response = await client.post(
         app.url_path_for('create_organization_endpoint'),
         json={},

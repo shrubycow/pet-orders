@@ -66,7 +66,7 @@ async def authorize_user(
         'family_id': uuid.uuid4(),
     }
     access_token, refresh_token, iat, refresh_exat = _create_token_pair(
-        user_id, **tokens
+        user_id, **tokens, refresh_exat=None,
     )
     family_exat = int((iat + FAMILY_TOKEN_EXPIRATION_DELTA).timestamp())
     session_key = get_session_key(tokens['family_id'])

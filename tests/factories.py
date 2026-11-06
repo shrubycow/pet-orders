@@ -31,8 +31,10 @@ def make_user(
     return User(email=email, password='hash', organization=organization, role=role)
 
 
-def make_product(organization: Organization, **overrides) -> Product:
-    fields = {
+def make_product(
+    organization: Organization | None, **overrides: object
+) -> Product:
+    fields: dict[str, object] = {
         'sku': 'PRD-000001',
         'name': 'Dog food',
         'description': 'Dry food for adult dogs',

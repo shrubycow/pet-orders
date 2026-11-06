@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import jwt
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pet_orders.auth.dependencies import (
@@ -28,28 +28,33 @@ CODE = '123456'
 
 
 def _sub(token: str) -> str:
-    return jwt.decode(token, auth_settings.secret_key, algorithms=[ALGORITHM])['sub']
+    payload = jwt.decode(token, auth_settings.secret_key, algorithms=[ALGORITHM])
+    subject = payload['sub']
+    assert isinstance(subject, str)
+    return subject
 
 
-async def _refresh(client: AsyncClient, refresh_token: str):
+async def _refresh(client: AsyncClient, refresh_token: str) -> Response:
     return await client.post(
         app.url_path_for('refresh_token'), json={'refresh_token': refresh_token}
     )
 
 
-async def _verify_email(client: AsyncClient, headers: dict[str, str], code: str):
+async def _verify_email(
+    client: AsyncClient, headers: dict[str, str], code: str
+) -> Response:
     return await client.post(
         app.url_path_for('verify_email_code'), json={'code': code}, headers=headers
     )
 
 
-async def _resend_code(client: AsyncClient, headers: dict[str, str]):
+async def _resend_code(client: AsyncClient, headers: dict[str, str]) -> Response:
     return await client.post(
         app.url_path_for('resend_auth_code_email'), headers=headers
     )
 
 
-async def test_login(client: AsyncClient, active_user: User):
+async def test_login(client: AsyncClient, active_user: User) -> None:
     response = await client.post(
         app.url_path_for('login'),
         json={'email': USER_EMAIL, 'password': USER_PASSWORD},
@@ -68,7 +73,7 @@ async def test_login(client: AsyncClient, active_user: User):
 )
 async def test_login_invalid_credentials(
     client: AsyncClient, active_user: User, email: str, password: str
-):
+) -> None:
     response = await client.post(
         app.url_path_for('login'), json={'email': email, 'password': password}
     )
@@ -77,7 +82,7 @@ async def test_login_invalid_credentials(
     assert response.json()['detail'] == INVALID_CREDENTIALS
 
 
-async def test_refresh_rotates_token_pair(client: AsyncClient, active_user: User):
+async def test_refresh_rotates_token_pair(client: AsyncClient, active_user: User) -> None:
     _, refresh_token = await authorize_user(active_user.id)
 
     response = await _refresh(client, refresh_token)
@@ -90,7 +95,7 @@ async def test_refresh_rotates_token_pair(client: AsyncClient, active_user: User
 
 async def test_refresh_token_reuse_revokes_family(
     client: AsyncClient, active_user: User
-):
+) -> None:
     _, old_refresh_token = await authorize_user(active_user.id)
     new_refresh_token = (await _refresh(client, old_refresh_token)).json()[
         'refresh_token'
@@ -105,7 +110,7 @@ async def test_refresh_token_reuse_revokes_family(
     assert after_reuse.json()['detail'] == INVALID_REFRESH_TOKEN
 
 
-async def test_refresh_with_access_token(client: AsyncClient, active_user: User):
+async def test_refresh_with_access_token(client: AsyncClient, active_user: User) -> None:
     access_token, _ = await authorize_user(active_user.id)
 
     response = await _refresh(client, access_token)
@@ -114,7 +119,7 @@ async def test_refresh_with_access_token(client: AsyncClient, active_user: User)
     assert response.json()['detail'] == INVALID_REFRESH_TOKEN
 
 
-async def test_refresh_expired_token(client: AsyncClient):
+async def test_refresh_expired_token(client: AsyncClient) -> None:
     token = expired_token(TokenType.REFRESH, family=str(uuid4()))
 
     response = await _refresh(client, token)
@@ -128,7 +133,7 @@ async def test_verify_email(
     db_session: AsyncSession,
     inactive_user: User,
     inactive_user_headers: dict[str, str],
-):
+) -> None:
     key = get_user_created_key(inactive_user.id)
     await redis.set(key, hash_auth_code(CODE))
 
@@ -147,7 +152,7 @@ async def test_verify_email_invalid_code(
     inactive_user: User,
     inactive_user_headers: dict[str, str],
     stored_code: str | None,
-):
+) -> None:
     if stored_code is not None:
         await redis.set(
             get_user_created_key(inactive_user.id), hash_auth_code(stored_code)
@@ -163,7 +168,7 @@ async def test_verify_email_invalid_code(
 
 async def test_verify_email_active_user(
     client: AsyncClient, active_user_headers: dict[str, str]
-):
+) -> None:
     response = await _verify_email(client, active_user_headers, CODE)
 
     assert response.status_code == 403
@@ -172,7 +177,7 @@ async def test_verify_email_active_user(
 
 async def test_verify_email_rate_limit(
     client: AsyncClient, inactive_user_headers: dict[str, str]
-):
+) -> None:
     first = await _verify_email(client, inactive_user_headers, '000000')
     second = await _verify_email(client, inactive_user_headers, '000000')
 
@@ -180,7 +185,7 @@ async def test_verify_email_rate_limit(
     assert second.status_code == 429
 
 
-async def test_verify_email_without_token(client: AsyncClient):
+async def test_verify_email_without_token(client: AsyncClient) -> None:
     response = await _verify_email(client, {}, CODE)
 
     assert response.status_code == 401
@@ -195,14 +200,14 @@ async def test_verify_email_without_token(client: AsyncClient):
 )
 async def test_verify_email_bad_access_token(
     client: AsyncClient, token: str, detail: str
-):
+) -> None:
     response = await _verify_email(client, {'Authorization': f'Bearer {token}'}, CODE)
 
     assert response.status_code == 401
     assert response.json()['detail'] == detail
 
 
-async def test_verify_email_unknown_user(client: AsyncClient):
+async def test_verify_email_unknown_user(client: AsyncClient) -> None:
     access_token, _ = await authorize_user(uuid4())
 
     response = await _verify_email(
@@ -229,13 +234,14 @@ async def test_resend_auth_code(
     inactive_user: User,
     inactive_user_headers: dict[str, str],
     sent_emails: list[tuple[str, str]],
-):
+) -> None:
     response = await _resend_code(client, inactive_user_headers)
 
     assert response.status_code == 204
     [(email, body)] = sent_emails
     code = body.rsplit(' ', 1)[-1]
     hashed_code = await redis.get(get_user_created_key(inactive_user.id))
+    assert isinstance(hashed_code, str)
     assert email == inactive_user.email
     assert verify_auth_code(code, hashed_code)
 
@@ -244,7 +250,7 @@ async def test_resend_auth_code_active_user(
     client: AsyncClient,
     active_user_headers: dict[str, str],
     sent_emails: list[tuple[str, str]],
-):
+) -> None:
     response = await _resend_code(client, active_user_headers)
 
     assert response.status_code == 403
@@ -256,7 +262,7 @@ async def test_resend_auth_code_rate_limit(
     client: AsyncClient,
     inactive_user_headers: dict[str, str],
     sent_emails: list[tuple[str, str]],
-):
+) -> None:
     first = await _resend_code(client, inactive_user_headers)
     second = await _resend_code(client, inactive_user_headers)
 

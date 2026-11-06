@@ -1,3 +1,5 @@
+from uuid import UUID
+
 import pytest
 from sqlalchemy import select, text
 from sqlalchemy.exc import InvalidRequestError
@@ -11,7 +13,7 @@ from tests.db import assert_flush_violates
 from tests.factories import make_organization, make_user
 
 
-async def test_defaults(db_session: AsyncSession):
+async def test_defaults(db_session: AsyncSession) -> None:
     user = make_user()
     db_session.add(user)
     await db_session.flush()
@@ -21,7 +23,7 @@ async def test_defaults(db_session: AsyncSession):
     assert user.role is None
 
 
-async def test_email_is_unique(db_session: AsyncSession):
+async def test_email_is_unique(db_session: AsyncSession) -> None:
     db_session.add(make_user(email='same@example.com'))
     await db_session.flush()
     db_session.add(make_user(email='same@example.com'))
@@ -31,7 +33,7 @@ async def test_email_is_unique(db_session: AsyncSession):
 
 async def test_member_of_organization(
     db_session: AsyncSession, organization: Organization
-):
+) -> None:
     user = make_user(organization=organization, role=OrganizationRole.ADMIN)
     db_session.add(user)
     await db_session.flush()
@@ -45,13 +47,13 @@ async def test_member_of_organization(
 
 async def test_organization_without_role(
     db_session: AsyncSession, organization: Organization
-):
+) -> None:
     db_session.add(make_user(organization=organization))
 
     await assert_flush_violates(db_session, 'ck_users_organization_role')
 
 
-async def test_role_without_organization(db_session: AsyncSession):
+async def test_role_without_organization(db_session: AsyncSession) -> None:
     db_session.add(make_user(role=OrganizationRole.MEMBER))
 
     await assert_flush_violates(db_session, 'ck_users_organization_role')
@@ -59,7 +61,7 @@ async def test_role_without_organization(db_session: AsyncSession):
 
 async def test_single_owner_per_organization(
     db_session: AsyncSession, organization: Organization
-):
+) -> None:
     db_session.add(make_user('owner@example.com', organization, OrganizationRole.OWNER))
     await db_session.flush()
     db_session.add(
@@ -71,7 +73,7 @@ async def test_single_owner_per_organization(
 
 async def test_owners_of_different_organizations(
     db_session: AsyncSession, organization: Organization
-):
+) -> None:
     other = make_organization(name='Other')
     db_session.add_all(
         [
@@ -85,7 +87,7 @@ async def test_owners_of_different_organizations(
 
 async def test_many_admins_per_organization(
     db_session: AsyncSession, organization: Organization
-):
+) -> None:
     db_session.add_all(
         [
             make_user('first@example.com', organization, OrganizationRole.ADMIN),
@@ -97,7 +99,7 @@ async def test_many_admins_per_organization(
 
 
 @pytest.fixture
-async def member_id(db_session: AsyncSession, organization: Organization):
+async def member_id(db_session: AsyncSession, organization: Organization) -> UUID:
     user = make_user(organization=organization, role=OrganizationRole.MEMBER)
     db_session.add(user)
     await db_session.flush()
@@ -105,20 +107,25 @@ async def member_id(db_session: AsyncSession, organization: Organization):
     return user.id
 
 
-async def test_organization_is_not_lazy_loaded(db_session: AsyncSession, member_id):
+async def test_organization_is_not_lazy_loaded(
+    db_session: AsyncSession, member_id: UUID
+) -> None:
     user = await db_session.scalar(select(User).where(User.id == member_id))
+    assert user is not None
 
     with pytest.raises(InvalidRequestError):
         _ = user.organization
 
 
 async def test_organization_with_eager_load(
-    db_session: AsyncSession, organization: Organization, member_id
-):
+    db_session: AsyncSession, organization: Organization, member_id: UUID
+) -> None:
     user = await db_session.scalar(
         select(User)
         .where(User.id == member_id)
         .options(selectinload(User.organization))
     )
 
+    assert user is not None
+    assert user.organization is not None
     assert user.organization.id == organization.id

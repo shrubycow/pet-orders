@@ -30,7 +30,7 @@ async def rotate_token_pair(refresh_token_data: RotateRefreshTokenData) -> Token
 
 async def verify_email(db_session: AsyncSession, user: User, code: str) -> None:
     user_created_key = get_user_created_key(user.id)
-    hashed_code: str = (await redis.get(user_created_key)) or ''
+    hashed_code: str = (await redis.get(user_created_key)) or ''  # type: ignore
     if not verify_auth_code(code, hashed_code):
         raise_api_error(status.HTTP_400_BAD_REQUEST, INVALID_CODE)
     user.status = UserStatus.ACTIVE

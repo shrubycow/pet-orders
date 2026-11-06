@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
@@ -11,7 +12,7 @@ from tests.db import assert_flush_violates
 from tests.factories import make_organization, make_product
 
 
-async def test_defaults(db_session: AsyncSession, organization: Organization):
+async def test_defaults(db_session: AsyncSession, organization: Organization) -> None:
     product = make_product(organization)
     db_session.add(product)
     await db_session.flush()
@@ -19,12 +20,12 @@ async def test_defaults(db_session: AsyncSession, organization: Organization):
 
     assert product.stock == 0
     assert product.is_active is True
-    assert product.created_at is not None
+    assert isinstance(product.created_at, datetime)
 
 
 async def test_price_and_currency_round_trip(
     db_session: AsyncSession, organization: Organization
-):
+) -> None:
     product = make_product(
         organization, price=Decimal('1234.5678'), currency=CurrencyEnum.EUR
     )
@@ -41,7 +42,7 @@ async def test_price_and_currency_round_trip(
     assert row.currency == 'EUR'
 
 
-async def test_organization_is_required(db_session: AsyncSession):
+async def test_organization_is_required(db_session: AsyncSession) -> None:
     db_session.add(make_product(organization=None))
 
     with pytest.raises(IntegrityError, match='organization_id'):
@@ -50,7 +51,7 @@ async def test_organization_is_required(db_session: AsyncSession):
 
 async def test_sku_is_unique_within_organization(
     db_session: AsyncSession, organization: Organization
-):
+) -> None:
     db_session.add(make_product(organization, sku='PRD-000001'))
     await db_session.flush()
     db_session.add(make_product(organization, sku='PRD-000001'))
@@ -60,7 +61,7 @@ async def test_sku_is_unique_within_organization(
 
 async def test_same_sku_in_different_organizations(
     db_session: AsyncSession, organization: Organization
-):
+) -> None:
     other = make_organization(name='Other')
     db_session.add_all(
         [
@@ -74,7 +75,7 @@ async def test_same_sku_in_different_organizations(
 
 async def test_zero_price_and_stock(
     db_session: AsyncSession, organization: Organization
-):
+) -> None:
     db_session.add(make_product(organization, price=Decimal(0), stock=0))
 
     await db_session.flush()
@@ -93,7 +94,7 @@ async def test_negative_values(
     field: str,
     value: Decimal | int,
     constraint: str,
-):
+) -> None:
     db_session.add(make_product(organization, **{field: value}))
 
     await assert_flush_violates(db_session, constraint)

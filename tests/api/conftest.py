@@ -1,3 +1,5 @@
+from collections.abc import AsyncGenerator, AsyncIterator
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -27,7 +29,7 @@ async def migrated_database() -> None:
 
 
 @pytest.fixture(scope='session')
-async def client(migrated_database: None):
+async def client(migrated_database: None) -> AsyncIterator[AsyncClient]:
     channel = FakeChannel()
     async with app.router.lifespan_context(app):
         app.state.broker = channel
@@ -42,11 +44,15 @@ async def client(migrated_database: None):
 
 @pytest.fixture
 def broker(client: AsyncClient) -> FakeChannel:
-    return app.state.broker
+    channel = app.state.broker
+    assert isinstance(channel, FakeChannel)
+    return channel
 
 
 @pytest.fixture
-async def db_sessions(client: AsyncClient):
+async def db_sessions(
+    client: AsyncClient,
+) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     async with engine.connect() as connection:
         transaction = await connection.begin()
         sessions = async_sessionmaker(
@@ -56,7 +62,7 @@ async def db_sessions(client: AsyncClient):
             join_transaction_mode='create_savepoint',
         )
 
-        async def get_test_session():
+        async def get_test_session() -> AsyncGenerator[AsyncSession, None]:
             async with sessions() as session:
                 yield session
 
@@ -71,12 +77,16 @@ async def db_sessions(client: AsyncClient):
 
 
 @pytest.fixture(autouse=True)
-async def clean_state(db_sessions: async_sessionmaker[AsyncSession]) -> None:
+async def clean_state(
+    db_sessions: async_sessionmaker[AsyncSession],
+) -> AsyncIterator[None]:
     yield
 
 
 @pytest.fixture
-async def db_session(db_sessions: async_sessionmaker[AsyncSession]):
+async def db_session(
+    db_sessions: async_sessionmaker[AsyncSession],
+) -> AsyncIterator[AsyncSession]:
     async with db_sessions() as session:
         yield session
 

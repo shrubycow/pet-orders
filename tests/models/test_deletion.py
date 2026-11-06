@@ -8,7 +8,7 @@ from pet_orders.organizations.models import Organization
 
 async def test_session_delete_is_forbidden(
     db_session: AsyncSession, organization: Organization
-):
+) -> None:
     await db_session.delete(organization)
 
     with pytest.raises(DeletionForbidden, match='Organization cannot be deleted'):
@@ -17,7 +17,7 @@ async def test_session_delete_is_forbidden(
 
 async def test_bulk_delete_is_forbidden(
     db_session: AsyncSession, organization: Organization
-):
+) -> None:
     with pytest.raises(DeletionForbidden, match='Organization cannot be deleted'):
         await db_session.execute(delete(Organization))
 
