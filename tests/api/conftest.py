@@ -8,9 +8,16 @@ from pet_orders.core.db.db import engine
 from pet_orders.core.db.dependencies import get_db_session
 from pet_orders.core.redis.client import redis
 from pet_orders.main import app
+from pet_orders.organizations.models import Organization
 from pet_orders.users.models import User, UserStatus
+from tests.api.helpers import bearer
 from tests.db import migrate_database
-from tests.factories import USER_EMAIL, USER_PASSWORD
+from tests.factories import (
+    USER_EMAIL,
+    USER_PASSWORD,
+    add_user_to_organization,
+    make_organization,
+)
 from tests.fakes import FakeChannel
 
 
@@ -95,17 +102,23 @@ async def active_user(db_session: AsyncSession) -> User:
     return await _create_user(db_session, UserStatus.ACTIVE)
 
 
-def _bearer(access_token: str) -> dict[str, str]:
-    return {'Authorization': f'Bearer {access_token}'}
-
-
 @pytest.fixture
 async def inactive_user_headers(inactive_user: User) -> dict[str, str]:
     access_token, _ = await authorize_user(inactive_user.id)
-    return _bearer(access_token)
+    return bearer(access_token)
 
 
 @pytest.fixture
 async def active_user_headers(active_user: User) -> dict[str, str]:
     access_token, _ = await authorize_user(active_user.id)
-    return _bearer(access_token)
+    return bearer(access_token)
+
+
+@pytest.fixture
+async def member_organization(
+    db_session: AsyncSession, active_user: User
+) -> Organization:
+    organization = make_organization()
+    add_user_to_organization(active_user, organization)
+    await db_session.commit()
+    return organization

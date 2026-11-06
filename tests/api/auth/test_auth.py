@@ -1,4 +1,3 @@
-from datetime import timedelta
 from uuid import uuid4
 
 import jwt
@@ -19,29 +18,13 @@ from pet_orders.core.auth.consts import TokenType
 from pet_orders.core.auth.password import hash_auth_code, verify_auth_code
 from pet_orders.core.auth.settings import auth_settings
 from pet_orders.core.redis.client import redis
-from pet_orders.core.utils import now
 from pet_orders.main import app
 from pet_orders.users.models import User, UserStatus
 from pet_orders.users.service import get_user_created_key
+from tests.api.helpers import expired_token
 from tests.factories import USER_EMAIL, USER_PASSWORD
 
 CODE = '123456'
-
-
-def _expired_token(token_type: TokenType, **claims) -> str:
-    issued_at = now() - timedelta(hours=1)
-    return jwt.encode(
-        {
-            'sub': str(uuid4()),
-            'typ': token_type,
-            'exp': issued_at + timedelta(minutes=1),
-            'iat': issued_at,
-            'jti': str(uuid4()),
-            **claims,
-        },
-        auth_settings.secret_key,
-        algorithm=ALGORITHM,
-    )
 
 
 def _sub(token: str) -> str:
@@ -132,7 +115,7 @@ async def test_refresh_with_access_token(client: AsyncClient, active_user: User)
 
 
 async def test_refresh_expired_token(client: AsyncClient):
-    token = _expired_token(TokenType.REFRESH, family=str(uuid4()))
+    token = expired_token(TokenType.REFRESH, family=str(uuid4()))
 
     response = await _refresh(client, token)
 
@@ -206,7 +189,7 @@ async def test_verify_email_without_token(client: AsyncClient):
 @pytest.mark.parametrize(
     ('token', 'detail'),
     [
-        (_expired_token(TokenType.ACCESS), ACCESS_TOKEN_EXPIRED),
+        (expired_token(TokenType.ACCESS), ACCESS_TOKEN_EXPIRED),
         ('not-a-jwt', INVALID_ACCESS_TOKEN),
     ],
 )

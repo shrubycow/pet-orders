@@ -14,6 +14,15 @@ def make_organization(name: str = 'Acme') -> Organization:
     return Organization(name=name)
 
 
+def add_user_to_organization(
+    user: User,
+    organization: Organization,
+    role: OrganizationRole = OrganizationRole.MEMBER,
+) -> None:
+    user.organization = organization
+    user.role = role
+
+
 def make_user(
     email: str = USER_EMAIL,
     organization: Organization | None = None,

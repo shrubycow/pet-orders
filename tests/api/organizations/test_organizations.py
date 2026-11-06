@@ -1,7 +1,5 @@
-from datetime import timedelta
 from uuid import UUID, uuid4
 
-import jwt
 import pytest
 from fastapi import HTTPException
 from httpx import AsyncClient
@@ -13,10 +11,8 @@ from pet_orders.auth.dependencies import (
     INVALID_ACCESS_TOKEN,
     USER_IS_INACTIVE,
 )
-from pet_orders.core.auth.auth import ALGORITHM, authorize_user
+from pet_orders.core.auth.auth import authorize_user
 from pet_orders.core.auth.consts import TokenType
-from pet_orders.core.auth.settings import auth_settings
-from pet_orders.core.utils import now
 from pet_orders.main import app
 from pet_orders.organizations.consts import OrganizationRole, OrganizationStatus
 from pet_orders.organizations.models import Organization
@@ -26,26 +22,8 @@ from pet_orders.organizations.service import (
     create_organization,
 )
 from pet_orders.users.models import User, UserStatus
+from tests.api.helpers import bearer, expired_token
 from tests.factories import make_organization
-
-
-def _bearer(access_token: str) -> dict[str, str]:
-    return {'Authorization': f'Bearer {access_token}'}
-
-
-def _expired_access_token() -> str:
-    issued_at = now() - timedelta(hours=1)
-    return jwt.encode(
-        {
-            'sub': str(uuid4()),
-            'typ': TokenType.ACCESS,
-            'exp': issued_at + timedelta(minutes=1),
-            'iat': issued_at,
-            'jti': str(uuid4()),
-        },
-        auth_settings.secret_key,
-        algorithm=ALGORITHM,
-    )
 
 
 async def _create_organization(
@@ -97,7 +75,7 @@ async def test_create_organization_duplicate_name(
     await db_session.commit()
     access_token, _ = await authorize_user(other.id)
 
-    response = await _create_organization(client, _bearer(access_token), 'Acme')
+    response = await _create_organization(client, bearer(access_token), 'Acme')
 
     assert response.status_code == 409
     assert response.json()['detail'] == ORGANIZATION_NAME_TAKEN
@@ -150,14 +128,14 @@ async def test_create_organization_without_token(client: AsyncClient):
 @pytest.mark.parametrize(
     ('token', 'detail'),
     [
-        (_expired_access_token(), ACCESS_TOKEN_EXPIRED),
+        (expired_token(TokenType.ACCESS), ACCESS_TOKEN_EXPIRED),
         ('not-a-jwt', INVALID_ACCESS_TOKEN),
     ],
 )
 async def test_create_organization_bad_access_token(
     client: AsyncClient, token: str, detail: str
 ):
-    response = await _create_organization(client, _bearer(token))
+    response = await _create_organization(client, bearer(token))
 
     assert response.status_code == 401
     assert response.json()['detail'] == detail
@@ -166,7 +144,7 @@ async def test_create_organization_bad_access_token(
 async def test_create_organization_unknown_user(client: AsyncClient):
     access_token, _ = await authorize_user(uuid4())
 
-    response = await _create_organization(client, _bearer(access_token))
+    response = await _create_organization(client, bearer(access_token))
 
     assert response.status_code == 401
     assert response.json()['detail'] == INVALID_ACCESS_TOKEN
@@ -214,7 +192,7 @@ async def test_create_organization_duplicate_name_ignores_case_and_spaces(
     await db_session.commit()
     access_token, _ = await authorize_user(other.id)
 
-    response = await _create_organization(client, _bearer(access_token), '  aCmE  ')
+    response = await _create_organization(client, bearer(access_token), '  aCmE  ')
 
     assert response.status_code == 409
     assert response.json()['detail'] == ORGANIZATION_NAME_TAKEN
