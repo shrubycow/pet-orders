@@ -1,7 +1,8 @@
 from enum import StrEnum
 from pathlib import Path
+from typing import Self
 
-from pydantic import EmailStr
+from pydantic import EmailStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ENV_FILE_PATH = Path(__file__).resolve().parents[2] / '.env'
@@ -16,7 +17,7 @@ class Environment(StrEnum):
 
 class Settings(BaseSettings):
     database_url: str
-    rabbitmq_url: str
+    rabbitmq_url: str | None = None
     redis_url: str
 
     mail_username: str = ''
@@ -36,6 +37,12 @@ class Settings(BaseSettings):
         env_file=ENV_FILE_PATH,
         extra='ignore',
     )
+
+    @model_validator(mode='after')
+    def require_rabbitmq_url(self) -> Self:
+        if self.environment is not Environment.test and not self.rabbitmq_url:
+            raise ValueError('RABBITMQ_URL is required')
+        return self
 
 
 settings = Settings()

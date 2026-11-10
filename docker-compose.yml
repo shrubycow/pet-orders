@@ -56,10 +56,7 @@ services:
     restart: on-failure
     ports:
       - "8000:8000"
-    environment: &app-env
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://pet:pet@postgres:5432/pet_orders}
-      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://pet:pet@rabbitmq:5672/}
-      REDIS_URL: ${REDIS_URL:-redis://:pet@redis:6379/0}
+    env_file: .env
     depends_on: &app-depends
       postgres:
         condition: service_healthy
@@ -74,7 +71,7 @@ services:
     pull_policy: build
     restart: on-failure
     command: ["python", "-m", "pet_orders.worker"]
-    environment: *app-env
+    env_file: .env
     depends_on: *app-depends
 
 volumes:
