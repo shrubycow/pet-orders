@@ -1,5 +1,12 @@
 from typing import cast
-from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType, NameEmail
+
+from fastapi_mail import (
+    ConnectionConfig,
+    FastMail,
+    MessageSchema,
+    MessageType,
+    NameEmail,
+)
 from pydantic import SecretStr
 
 from pet_orders.settings import settings

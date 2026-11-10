@@ -62,7 +62,7 @@ async def db_sessions(
             join_transaction_mode='create_savepoint',
         )
 
-        async def get_test_session() -> AsyncGenerator[AsyncSession, None]:
+        async def get_test_session() -> AsyncGenerator[AsyncSession]:
             async with sessions() as session:
                 yield session
 

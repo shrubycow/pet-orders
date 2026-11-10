@@ -82,7 +82,9 @@ async def test_login_invalid_credentials(
     assert response.json()['detail'] == INVALID_CREDENTIALS
 
 
-async def test_refresh_rotates_token_pair(client: AsyncClient, active_user: User) -> None:
+async def test_refresh_rotates_token_pair(
+    client: AsyncClient, active_user: User
+) -> None:
     _, refresh_token = await authorize_user(active_user.id)
 
     response = await _refresh(client, refresh_token)
@@ -110,7 +112,9 @@ async def test_refresh_token_reuse_revokes_family(
     assert after_reuse.json()['detail'] == INVALID_REFRESH_TOKEN
 
 
-async def test_refresh_with_access_token(client: AsyncClient, active_user: User) -> None:
+async def test_refresh_with_access_token(
+    client: AsyncClient, active_user: User
+) -> None:
     access_token, _ = await authorize_user(active_user.id)
 
     response = await _refresh(client, access_token)

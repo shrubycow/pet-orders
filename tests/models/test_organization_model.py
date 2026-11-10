@@ -39,9 +39,7 @@ async def test_name_is_unique(
     await assert_flush_violates(db_session, 'ix_organizations_name')
 
 
-async def _delete_organization(
-    db_session: AsyncSession, organization_id: UUID
-) -> None:
+async def _delete_organization(db_session: AsyncSession, organization_id: UUID) -> None:
     await db_session.execute(
         text('DELETE FROM organizations WHERE id = :id'),
         {'id': organization_id},
