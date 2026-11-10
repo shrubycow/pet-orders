@@ -23,8 +23,6 @@ docker compose exec api alembic upgrade head
 
 Миграции при старте контейнера не применяются: после первого запуска и после новых ревизий нужна команда `alembic upgrade head` выше.
 
-Без Docker API и воркер запускаются из корня репозитория и читают тот же `.env`. В образце хосты — имена сервисов Compose (`postgres`, `rabbitmq`, `redis`, `mailpit`). Для процесса на хосте замените их на `localhost`.
-
 ```bash
 uv sync
 uv run alembic upgrade head
@@ -68,7 +66,6 @@ uv run python -m pet_orders.worker
 Pytest читает `.env.test` из корня до импорта приложения. Там `ENVIRONMENT=test`, поэтому `RABBITMQ_URL` не нужен: при старте приложение к брокеру не подключается, а в тестах канал подменяется. `DATABASE_URL` указывает на `pet_orders_test`: фикстуры создают эту базу через `ADMIN_DATABASE_URL` и накатывают миграции до `head`. Redis — база `1` на опубликованном порту Compose, чтобы не задеть локальные сессии в `/0`. Postgres и Redis должны быть запущены.
 
 ```bash
-uv sync --group dev
 uv run pytest
 ```
 
